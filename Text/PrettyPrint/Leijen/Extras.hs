@@ -115,7 +115,7 @@ module Text.PrettyPrint.Leijen.Extras (
   -- * Undocumented
   , bool
 
-  , column, nesting, width
+  , column, nesting, width, columns
 
   -- * Re-exported standard functions
   , empty, (<>)
@@ -712,6 +712,7 @@ data Doc e
   | Effect e
   | Column  (Int -> Doc e)
   | Nesting (Int -> Doc e)
+  | Columns (Int -> Doc e) -- return the number of columns to render to
 
 instance Functor Doc where
   fmap _ Empty = Empty
@@ -724,6 +725,7 @@ instance Functor Doc where
   fmap f (Effect e) = Effect (f e)
   fmap f (Column k) = Column (fmap f . k)
   fmap f (Nesting k) = Nesting (fmap f . k)
+  fmap f (Columns k) = Columns (fmap f . k)
 
 instance Apply Doc where
   (<.>) = ap
@@ -747,6 +749,7 @@ instance Monad Doc where
   Effect e >>= k = k e
   Column f >>= k = Column (f >=> k)
   Nesting f >>= k = Nesting (f >=> k)
+  Columns f >>= k = Columns (f >=> k)
   fail _ = empty
 
 instance Alt Doc where
@@ -849,6 +852,9 @@ column, nesting :: (Int -> Doc e) -> Doc e
 column = Column
 nesting = Nesting
 
+columns :: (Int -> Doc e) -> Doc e
+columns = Columns
+
 -- | The @group@ combinator is used to specify alternative
 -- layouts. The document @(group x)@ undoes all line breaks in
 -- document @x@. The resulting line is added to the current line if
@@ -864,6 +870,7 @@ flatten (Line brk)      = if brk then Empty else Text 1 " "
 flatten (Union x _)     = flatten x
 flatten (Column f)      = Column (flatten . f)
 flatten (Nesting f)     = Nesting (flatten . f)
+flatten (Columns f)     = Columns (flatten . f)
 flatten other           = other                     --Empty,Char,Text
 
 
@@ -912,6 +919,7 @@ renderPretty rfrac w x
 
             Column f    -> best n k (Cons i (f k) ds)
             Nesting f   -> best n k (Cons i (f i) ds)
+            Columns f   -> best n k (Cons i (f w) ds)
 
       --nicest :: r = ribbon width, w = page width,
       --          n = indentation of current line, k = current column
@@ -959,6 +967,7 @@ renderCompact x
                         Union _ y   -> scan k (y:ds)
                         Column f    -> scan k (f k:ds)
                         Nesting f   -> scan k (f 0:ds)
+                        Columns f   -> scan k (f 80:ds)
 
 -----------------------------------------------------------
 -- Displayers:  displayS and displayIO
