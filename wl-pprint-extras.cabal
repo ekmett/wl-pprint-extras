@@ -1,6 +1,6 @@
 name:          wl-pprint-extras
 category:      Control, Monads, Text
-version:       1.2.1
+version:       1.2.2
 cabal-version: >= 1.6
 license:       BSD3
 license-file:  LICENSE
@@ -27,5 +27,6 @@ library
 
   exposed-modules:
     Text.PrettyPrint.Leijen.Extras
+    Text.PrettyPrint.Leijen.Extras.Internal
 
   ghc-options:      -Wall 
