@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Text.PrettyPrint.Leijen.Extras.Internal
+-- Module      :  Text.PrettyPrint.Free.Internal
 -- Copyright   :  Edward Kmett (c) 2011,
 --                Daan Leijen (c) 2000
 -- License     :  BSD-style (see the file LICENSE)
@@ -50,8 +50,8 @@
 -- 'renderCompact' for compact output. The pretty printing algorithm
 -- also uses a ribbon-width now for even prettier output.
 --
--- * There are two displayers, 'displayS' for strings and 'displayIO' for
--- file based output.
+-- * There are two display routines, 'displayS' for strings and 'displayIO' 
+-- for file based output.
 --
 -- * There is a 'Pretty' class.
 --
@@ -64,7 +64,7 @@
 -- 
 
 -----------------------------------------------------------
-module Text.PrettyPrint.Leijen.Extras.Internal (
+module Text.PrettyPrint.Free.Internal (
   -- * Documents
     Doc(..), putDoc, hPutDoc
 
@@ -550,15 +550,18 @@ instance Pretty Double where
 --instance Pretty Rational where
 --  pretty = rational
 
+instance Pretty (Doc a) where
+  pretty d = d *> empty
+
 instance (Pretty a,Pretty b) => Pretty (a,b) where
-  pretty (x,y)  = tupled [pretty x, pretty y]
+  pretty (x,y) = tupled [pretty x, pretty y]
 
 instance (Pretty a,Pretty b,Pretty c) => Pretty (a,b,c) where
   pretty (x,y,z)= tupled [pretty x, pretty y, pretty z]
 
 instance Pretty a => Pretty (Maybe a) where
-  pretty Nothing        = empty
-  pretty (Just x)       = pretty x
+  pretty Nothing = empty
+  pretty (Just x) = pretty x
 
 -----------------------------------------------------------
 -- semi primitive: fill and fillBreak

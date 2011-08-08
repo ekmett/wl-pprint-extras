@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Text.PrettyPrint.Leijen.Extras
+-- Module      :  Text.PrettyPrint.Free
 -- Copyright   :  Edward Kmett (c) 2011,
 --                Daan Leijen (c) 2000
 -- License     :  BSD-style (see the file LICENSE)
@@ -64,7 +64,7 @@
 -- 
 
 -----------------------------------------------------------
-module Text.PrettyPrint.Leijen.Extras (
+module Text.PrettyPrint.Free (
   -- * Documents
     Doc, putDoc, hPutDoc
 
@@ -121,4 +121,4 @@ module Text.PrettyPrint.Leijen.Extras (
   , empty, (<>)
   ) where
 
-import Text.PrettyPrint.Leijen.Extras.Internal
+import Text.PrettyPrint.Free.Internal
