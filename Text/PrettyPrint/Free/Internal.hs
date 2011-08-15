@@ -128,8 +128,11 @@ import Data.Monoid
 import Data.Functor.Apply
 import Data.Functor.Bind
 import Data.Functor.Plus
+import Data.List.NonEmpty (NonEmpty)
+import Numeric.Natural (Natural)
 import Control.Applicative
 import Control.Monad
+import Data.Sequence (Seq)
 import Data.Semigroup
 import System.IO (Handle,hPutStr,hPutChar,stdout)
 import Prelude hiding (foldr1)
@@ -535,11 +538,20 @@ instance Pretty Char where
   pretty = char
   prettyList s = string s
 
+instance Pretty a => Pretty (Seq a) where
+  pretty = prettyList . toList
+
+instance Pretty a => Pretty (NonEmpty a) where
+  pretty = prettyList . toList
+
 instance Pretty Int where
   pretty = int
 
 instance Pretty Integer where
   pretty = integer
+
+instance Pretty Natural where
+  pretty = integer . toInteger
 
 instance Pretty Float where
   pretty = float
