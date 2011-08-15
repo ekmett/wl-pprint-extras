@@ -138,7 +138,7 @@ import System.IO (Handle,hPutStr,hPutChar,stdout)
 import Prelude hiding (foldr1)
 
 infixr 5 </>,<//>,`above`,`aboveBreak`
-infixl 6 <+>
+infixr 6 <+>
 
 -----------------------------------------------------------
 -- list, tupled and semiBraces pretty print a list of
