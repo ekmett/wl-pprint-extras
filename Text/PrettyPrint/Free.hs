@@ -102,9 +102,6 @@ module Text.PrettyPrint.Free (
   , lparen, rparen, langle, rangle, lbrace, rbrace, lbracket, rbracket
   , squote, dquote, semi, colon, comma, space, dot, backslash, equals
 
-  -- * Primitive type documents
-  , string, int, integer, float, double, rational
-
   -- * Pretty class
   , Pretty(..)
 
@@ -113,7 +110,6 @@ module Text.PrettyPrint.Free (
   , displayS, displayIO
 
   -- * Undocumented
-  , bool
 
   , column, nesting, width, columns
 

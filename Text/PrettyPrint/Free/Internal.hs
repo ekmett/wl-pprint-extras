@@ -102,9 +102,6 @@ module Text.PrettyPrint.Free.Internal (
   , lparen, rparen, langle, rangle, lbrace, rbrace, lbracket, rbracket
   , squote, dquote, semi, colon, comma, space, dot, backslash, equals
 
-  -- * Primitive type documents
-  , string, int, integer, float, double, rational
-
   -- * Pretty class
   , Pretty(..)
 
@@ -113,7 +110,6 @@ module Text.PrettyPrint.Free.Internal (
   , displayS, displayIO
 
   -- * Undocumented
-  , bool
 
   , column, nesting, width, columns, ribbon
 
@@ -128,6 +124,8 @@ import Data.Monoid
 import Data.Functor.Apply
 import Data.Functor.Bind
 import Data.Functor.Plus
+import qualified Data.ByteString.UTF8 as Strict
+import qualified Data.ByteString.Lazy.UTF8 as Lazy
 import Data.List.NonEmpty (NonEmpty)
 import Numeric.Natural (Natural)
 import Control.Applicative
@@ -410,105 +408,75 @@ enclose l r x = l <> x <> r
 -- | The document @lparen@ contains a left parenthesis, \"(\".
 lparen :: Doc e
 lparen = char '('
+
 -- | The document @rparen@ contains a right parenthesis, \")\".
 rparen :: Doc e
 rparen = char ')'
+
 -- | The document @langle@ contains a left angle, \"\<\".
 langle :: Doc e
 langle = char '<'
+
 -- | The document @rangle@ contains a right angle, \">\".
 rangle :: Doc e
 rangle = char '>'
+
 -- | The document @lbrace@ contains a left brace, \"{\".
 lbrace :: Doc e
 lbrace = char '{'
+
 -- | The document @rbrace@ contains a right brace, \"}\".
 rbrace :: Doc e
 rbrace = char '}'
+
 -- | The document @lbracket@ contains a left square bracket, \"[\".
 lbracket :: Doc e
 lbracket = char '['
+
 -- | The document @rbracket@ contains a right square bracket, \"]\".
 rbracket :: Doc e
 rbracket = char ']'
 
-
 -- | The document @squote@ contains a single quote, \"'\".
 squote :: Doc e
 squote = char '\''
+
 -- | The document @dquote@ contains a double quote, '\"'.
 dquote :: Doc e
 dquote = char '"'
+
 -- | The document @semi@ contains a semi colon, \";\".
 semi :: Doc e
 semi = char ';'
+
 -- | The document @colon@ contains a colon, \":\".
 colon :: Doc e
 colon = char ':'
+
 -- | The document @comma@ contains a comma, \",\".
 comma :: Doc e
 comma = char ','
+
 -- | The document @space@ contains a single space, \" \".
 --
 -- > x <+> y   = x <> space <> y
 space :: Doc e 
 space = char ' '
+
 -- | The document @dot@ contains a single dot, \".\".
 dot :: Doc e
 dot = char '.'
+
 -- | The document @backslash@ contains a back slash, \"\\\".
 backslash :: Doc e
 backslash = char '\\'
+
 -- | The document @equals@ contains an equal sign, \"=\".
 equals :: Doc e
 equals = char '='
 
 instance IsString (Doc e) where
-  fromString = string
-
------------------------------------------------------------
--- Combinators for prelude types
------------------------------------------------------------
-
--- string is like "text" but replaces '\n' by "line"
-
--- | The document @(string s)@ concatenates all characters in @s@
--- using @line@ for newline characters and @char@ for all other
--- characters. It is used instead of 'text' whenever the text contains
--- newline characters.
-string :: String -> Doc e
-string "" = empty
-string ('\n':s) = line <> string s
-string s = case (span (/='\n') s) of
-             (xs,ys) -> text xs <> string ys
-
-bool :: Bool -> Doc e
-bool = text . show
-
--- | The document @(int i)@ shows the literal integer @i@ using
--- 'text'.
-int :: Int -> Doc e
-int = text . show
-
--- | The document @(integer i)@ shows the literal integer @i@ using
--- 'text'.
-integer :: Integer -> Doc e
-integer = text . show
-
--- | The document @(float f)@ shows the literal float @f@ using
--- 'text'.
-float :: Float -> Doc e
-float = text . show
-
--- | The document @(double d)@ shows the literal double @d@ using
--- 'text'.
-double :: Double -> Doc e
-double = text . show
-
--- | The document @(rational r)@ shows the literal rational @r@ using
--- 'text'.
-rational :: Rational -> Doc e
-rational = text . show
+  fromString = pretty
 
 -----------------------------------------------------------
 -- overloading "pretty"
@@ -528,15 +496,24 @@ instance Pretty a => Pretty [a] where
 -- instance Pretty (Doc ()) where
 --   pretty = id
 
+instance Pretty Strict.ByteString where
+  pretty = pretty . Strict.toString
+
+instance Pretty Lazy.ByteString where
+  pretty = pretty . Lazy.toString
+
 instance Pretty () where
   pretty () = text "()"
 
 instance Pretty Bool where
-  pretty = bool
+  pretty = text . show
 
 instance Pretty Char where
   pretty = char
-  prettyList s = string s
+  prettyList "" = empty
+  prettyList ('\n':s) = line <> prettyList s
+  prettyList s = case span (/='\n') s of
+             (xs,ys) -> text xs <> prettyList ys
 
 instance Pretty a => Pretty (Seq a) where
   pretty = prettyList . toList
@@ -545,22 +522,19 @@ instance Pretty a => Pretty (NonEmpty a) where
   pretty = prettyList . toList
 
 instance Pretty Int where
-  pretty = int
+  pretty = text . show
 
 instance Pretty Integer where
-  pretty = integer
+  pretty = text . show
 
 instance Pretty Natural where
-  pretty = integer . toInteger
+  pretty = text . show
 
 instance Pretty Float where
-  pretty = float
+  pretty = text . show
 
 instance Pretty Double where
-  pretty = double
-
---instance Pretty Rational where
---  pretty = rational
+  pretty = text . show
 
 instance Pretty (Doc a) where
   pretty d = d *> empty
