@@ -120,7 +120,6 @@ module Text.PrettyPrint.Free.Internal (
 import Data.String
 import Data.Foldable hiding (fold)
 import Data.Traversable
-import Data.Monoid
 import Data.Functor.Apply
 import Data.Functor.Bind
 import Data.Functor.Plus
@@ -336,7 +335,7 @@ instance Monoid (Doc e) where
 -- next to each other (with a @space@ in between) or underneath each
 -- other. (infixr 5)
 (</>) :: Doc e -> Doc e -> Doc e
-x </> y         = x <> softline <> y
+x </> y = x <> softline <> y
 
 -- | The document @(x \<\/\/\> y)@ concatenates document @x@ and @y@ with
 -- a 'softbreak' in between. This effectively puts @x@ and @y@ either
@@ -921,7 +920,7 @@ renderPretty rfrac w x
       --nicest :: r = ribbon width, w = page width,
       --          n = indentation of current line, k = current column
       --          x and y, the (simple) documents to chose from.
-      --          precondition: first lines of x are longer than the first lines of y.
+      --          precondition: first line of x are longer than the first line of y.
       nicest n k x' y | fits wid x' = x'
                       | otherwise  = y
                         where
