@@ -246,7 +246,7 @@ sep = group . vsep
 -- inserts a @line@ and continues doing that for all documents in
 -- @xs@.
 --
--- > fillSep xs  = foldr (\<\/\>) empty xs
+-- > fillSep xs  = foldr (</>) empty xs
 fillSep :: Foldable f => f (Doc e) -> Doc e
 fillSep = fold (</>)
 
@@ -300,7 +300,7 @@ cat = group . vcat
 -- horizontally with @(\<\>)@ as long as its fits the page, than inserts
 -- a @linebreak@ and continues doing that for all documents in @xs@.
 --
--- > fillCat xs  = foldr (\<\/\/\>) empty xs
+-- > fillCat xs  = foldr (<//>) empty xs
 fillCat :: Foldable f => f (Doc e) -> Doc e
 fillCat = fold (<//>)
 
