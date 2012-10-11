@@ -1,6 +1,6 @@
 name:          wl-pprint-extras
 category:      Control, Monads, Text
-version:       3.0
+version:       3.0.0.1
 cabal-version: >= 1.6
 license:       BSD3
 license-file:  LICENSE
@@ -9,7 +9,7 @@ maintainer:    Edward A. Kmett <ekmett@gmail.com>
 stability:     experimental
 homepage:      http://github.com/ekmett/wl-pprint-extras/
 bug-reports:   http://github.com/ekmett/wl-pprint-extras/issues
-copyright:     Copyright (C) 2011 Edward A. Kmett,
+copyright:     Copyright (C) 2011-2012 Edward A. Kmett,
                Copyright (C) 2000 Daan Leijen
 synopsis:      A free monad based on the Wadler/Leijen pretty printer
 description:   A free monad based on the Wadler/Leijen pretty printer
