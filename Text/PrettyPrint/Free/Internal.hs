@@ -123,6 +123,8 @@ import Data.Traversable
 import Data.Functor.Apply
 import Data.Functor.Bind
 import Data.Functor.Plus
+import Data.Int
+import Data.Word
 import qualified Data.ByteString.UTF8 as Strict
 import qualified Data.ByteString.Lazy.UTF8 as Lazy
 import Data.List.NonEmpty (NonEmpty)
@@ -521,6 +523,33 @@ instance Pretty a => Pretty (NonEmpty a) where
   pretty = prettyList . toList
 
 instance Pretty Int where
+  pretty = text . show
+
+instance Pretty Int8 where
+  pretty = text . show
+
+instance Pretty Int16 where
+  pretty = text . show
+
+instance Pretty Int32 where
+  pretty = text . show
+
+instance Pretty Int64 where
+  pretty = text . show
+
+instance Pretty Word where
+  pretty = text . show
+
+instance Pretty Word8 where
+  pretty = text . show
+
+instance Pretty Word16 where
+  pretty = text . show
+
+instance Pretty Word32 where
+  pretty = text . show
+
+instance Pretty Word64 where
   pretty = text . show
 
 instance Pretty Integer where
