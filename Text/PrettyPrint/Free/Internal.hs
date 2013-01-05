@@ -722,15 +722,15 @@ data Doc e
   = Empty
   | Char {-# UNPACK #-} !Char       -- invariant: char is not '\n'
   | Text {-# UNPACK #-} !Int String -- invariant: text doesn't contain '\n'
-  | Line !Bool                      -- True <=> when undone by group, do not insert a space
+  | Line !(Maybe Char)              -- Nothing <=> when undone by group, do not insert a space
   | Cat (Doc e) (Doc e)
   | Nest {-# UNPACK #-} !Int (Doc e)
   | Union (Doc e) (Doc e) -- invariant: first lines of first doc longer than the first lines of the second doc
   | Effect e
   | Column  (Int -> Doc e)
   | Nesting (Int -> Doc e)
-  | Columns (Int -> Doc e) 
-  | Ribbon  (Int -> Doc e) 
+  | Columns (Int -> Doc e)
+  | Ribbon  (Int -> Doc e)
 
 instance Functor Doc where
   fmap _ Empty = Empty
@@ -844,13 +844,13 @@ text s  = Text (length s) s
 -- current nesting level. Document @line@ behaves like @(text \" \")@
 -- if the line break is undone by 'group'.
 line :: Doc e
-line = Line False
+line = Line (Just ' ')
 
 -- | The @linebreak@ document advances to the next line and indents to
 -- the current nesting level. Document @linebreak@ behaves like
 -- 'empty' if the line break is undone by 'group'.
 linebreak :: Doc e
-linebreak = Line True
+linebreak = Line Nothing
 
 -- | The document @(nest i x)@ renders document @x@ with the current
 -- indentation level increased by i (See also 'hang', 'align' and
@@ -889,7 +889,7 @@ group x = Union (flatten x) x
 flatten :: Doc e -> Doc e
 flatten (Cat x y)       = Cat (flatten x) (flatten y)
 flatten (Nest i x)      = Nest i (flatten x)
-flatten (Line brk)      = if brk then Empty else Text 1 " "
+flatten (Line brk)      = maybe Empty Char brk
 flatten (Union x _)     = flatten x
 flatten (Column f)      = Column (flatten . f)
 flatten (Nesting f)     = Nesting (flatten . f)
