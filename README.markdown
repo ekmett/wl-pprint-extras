@@ -1,5 +1,5 @@
 wl-pprint-extras
-======
+================
 
 This package provides a free monad based on the Leijen/Wadler pretty printer.
 
