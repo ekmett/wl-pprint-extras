@@ -125,8 +125,12 @@ import Data.Functor.Bind
 import Data.Functor.Plus
 import Data.Int
 import Data.Word
-import qualified Data.ByteString.UTF8 as Strict
-import qualified Data.ByteString.Lazy.UTF8 as Lazy
+import qualified Data.ByteString.UTF8 as B
+import qualified Data.ByteString.Lazy.UTF8 as BL
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Encoding as TL
 import Data.List.NonEmpty (NonEmpty)
 import Numeric.Natural (Natural)
 import Control.Applicative
@@ -497,11 +501,17 @@ instance Pretty a => Pretty [a] where
 -- instance Pretty (Doc ()) where
 --   pretty = id
 
-instance Pretty Strict.ByteString where
-  pretty = pretty . Strict.toString
+instance Pretty B.ByteString where
+  pretty = pretty . B.toString
 
-instance Pretty Lazy.ByteString where
-  pretty = pretty . Lazy.toString
+instance Pretty BL.ByteString where
+  pretty = pretty . BL.toString
+
+instance Pretty T.Text where
+  pretty = pretty . T.encodeUtf8
+
+instance Pretty TL.Text where
+  pretty = pretty . TL.encodeUtf8
 
 instance Pretty () where
   pretty () = text "()"
