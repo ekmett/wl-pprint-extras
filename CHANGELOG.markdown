@@ -1,3 +1,7 @@
+3.4
+---
+* Additional instances for Data.Text and Data.Text.Lazy
+
 3.3
 ---
 * Removed upper bounds on dependencies
