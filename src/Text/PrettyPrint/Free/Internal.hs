@@ -70,7 +70,7 @@ module Text.PrettyPrint.Free.Internal (
 
   -- * Basic combinators
   , char, text, nest, line, linebreak, group, softline
-  , softbreak
+  , softbreak, hardline, flatAlt
 
   -- * Alignment
   --
@@ -106,7 +106,7 @@ module Text.PrettyPrint.Free.Internal (
   , Pretty(..)
 
   -- * Rendering
-  , SimpleDoc(..), renderPretty, renderCompact
+  , SimpleDoc(..), renderPretty, renderCompact, renderSmart
   , displayS, displayIO
 
   -- * Undocumented
@@ -729,10 +729,12 @@ align d = column $ \k ->
 -- world
 -- @
 data Doc e
-  = Empty
+  = Fail
+  | Empty
   | Char {-# UNPACK #-} !Char       -- invariant: char is not '\n'
   | Text {-# UNPACK #-} !Int String -- invariant: text doesn't contain '\n'
-  | Line !(Maybe Char)              -- Nothing <=> when undone by group, do not insert a space
+  | Line
+  | FlatAlt (Doc e) (Doc e)         -- Render the first doc, but when flattened, render the second.
   | Cat (Doc e) (Doc e)
   | Nest {-# UNPACK #-} !Int (Doc e)
   | Union (Doc e) (Doc e) -- invariant: first lines of first doc longer than the first lines of the second doc
@@ -745,7 +747,7 @@ data Doc e
 instance Functor Doc where
   fmap _ Empty = Empty
   fmap _ (Char c) = Char c
-  fmap _ (Line b) = Line b
+  fmap _  Line = Line
   fmap _ (Text i s) = Text i s
   fmap f (Cat l r) = Cat (fmap f l) (fmap f r)
   fmap f (Nest i d) = Nest i (fmap f d)
@@ -771,7 +773,7 @@ instance Monad Doc where
   Empty >>= _ = Empty
   Char c >>= _ = Char c
   Text i s >>= _ = Text i s
-  Line b >>= _ = Line b
+  Line >>= _ = Line
   Cat l r >>= k = Cat (l >>= k) (r >>= k)
   Nest i d >>= k = Nest i (d >>= k)
   Union l r >>= k = Union (l >>= k) (r >>= k)
@@ -807,8 +809,9 @@ instance MonadPlus Doc where
 -- provides two default display functions 'displayS' and
 -- 'displayIO'. You can provide your own display function by writing a
 -- function from a @SimpleDoc@ to your own output format.
-data SimpleDoc e 
-  = SEmpty
+data SimpleDoc e
+  = SFail
+  | SEmpty
   | SChar {-# UNPACK #-} !Char (SimpleDoc e)
   | SText {-# UNPACK #-} !Int String (SimpleDoc e)
   | SLine {-# UNPACK #-} !Int (SimpleDoc e)
@@ -854,13 +857,18 @@ text s  = Text (length s) s
 -- current nesting level. Document @line@ behaves like @(text \" \")@
 -- if the line break is undone by 'group'.
 line :: Doc e
-line = Line (Just ' ')
+line = FlatAlt Line space
 
 -- | The @linebreak@ document advances to the next line and indents to
 -- the current nesting level. Document @linebreak@ behaves like
 -- 'empty' if the line break is undone by 'group'.
 linebreak :: Doc e
-linebreak = Line Nothing
+linebreak = FlatAlt Line empty
+
+-- | A linebreak that can not be flattened; it is guaranteed to be
+-- rendered as a newline.
+hardline :: Doc e
+hardline = Line
 
 -- | The document @(nest i x)@ renders document @x@ with the current
 -- indentation level increased by i (See also 'hang', 'align' and
@@ -896,10 +904,17 @@ ribbon = Ribbon
 group :: Doc e -> Doc e
 group x = Union (flatten x) x
 
+-- | @flatAlt@ creates a document that changes when flattened; normally
+-- it is rendered as the first argument, but when flattened is rendered
+-- as the second.
+flatAlt :: Doc e -> Doc e -> Doc e
+flatAlt = FlatAlt
+
 flatten :: Doc e -> Doc e
+flatten (FlatAlt x y)   = y
 flatten (Cat x y)       = Cat (flatten x) (flatten y)
 flatten (Nest i x)      = Nest i (flatten x)
-flatten (Line brk)      = maybe Empty Char brk
+flatten  Line           = Fail
 flatten (Union x _)     = flatten x
 flatten (Column f)      = Column (flatten . f)
 flatten (Nesting f)     = Nesting (flatten . f)
@@ -929,7 +944,45 @@ data Docs e = Nil
 -- @ribbonfrac@ should be between @0.0@ and @1.0@. If it is lower or
 -- higher, the ribbon width will be 0 or @width@ respectively.
 renderPretty :: Float -> Int -> Doc e -> SimpleDoc e
-renderPretty rfrac w x
+renderPretty = renderFits fits1
+
+-- | A slightly smarter rendering algorithm with more lookahead. It provides
+-- provide earlier breaking on deeply nested structures
+-- For example, consider this python-ish pseudocode:
+-- @fun(fun(fun(fun(fun([abcdefg, abcdefg])))))@
+-- If we put a softbreak (+ nesting 2) after each open parenthesis, and align
+-- the elements of the list to match the opening brackets, this will render with
+-- @renderPretty@ and a page width of 20 as:
+-- @
+-- fun(fun(fun(fun(fun([
+--                     | abcdef,
+--                     | abcdef,
+--                     ]
+--   )))))             |
+-- @
+-- Where the 20c. boundary has been marked with |.
+-- Because @renderPretty@ only uses one-line lookahead, it sees that the first
+-- line fits, and is stuck putting the second and third lines after the 20-c
+-- mark. In contrast, @renderSmart@ will continue to check that the potential
+-- document up to the end of the indentation level. Thus, it will format the
+-- document as:
+--
+-- @
+-- fun(                |
+--   fun(              |
+--     fun(            |
+--       fun(          |
+--         fun([       |
+--               abcdef,
+--               abcdef,
+--             ]       |
+--   )))))             |
+-- @
+-- Which fits within the 20c. boundary.
+renderSmart :: Float -> Int -> Doc e -> SimpleDoc e
+renderSmart = renderFits fitsR
+
+renderFits fits rfrac w x
     = best 0 0 (Cons 0 x Nil)
     where
       -- r :: the ribbon width in characters
@@ -941,16 +994,17 @@ renderPretty rfrac w x
       best _ _ Nil      = SEmpty
       best n k (Cons i d ds)
         = case d of
+            Fail        -> SFail
             Empty       -> best n k ds
             Char c      -> let k' = k+1 in seq k' (SChar c (best n k' ds))
             Text l s    -> let k' = k+l in seq k' (SText l s (best n k' ds))
-            Line _      -> SLine i (best i i ds)
+            Line        -> SLine i (best i i ds)
+            FlatAlt x _ -> best n k (Cons i x ds)
             Cat x' y     -> best n k (Cons i x' (Cons i y ds))
             Nest j x'    -> let i' = i+j in seq i' (best n k (Cons i' x' ds))
             Effect e    -> SEffect e (best n k ds)
             Union x' y   -> nicest n k (best n k (Cons i x' ds))
                                        (best n k (Cons i y ds))
-
             Column f    -> best n k (Cons i (f k) ds)
             Nesting f   -> best n k (Cons i (f i) ds)
             Columns f   -> best n k (Cons i (f w) ds)
@@ -960,19 +1014,36 @@ renderPretty rfrac w x
       --          n = indentation of current line, k = current column
       --          x and y, the (simple) documents to chose from.
       --          precondition: first line of x are longer than the first line of y.
-      nicest n k x' y | fits wid x' = x'
+      nicest n k x' y | fits w (min n k) wid x' = x'
                       | otherwise  = y
                         where
                           wid = min (w - k) (r - k + n)
 
+-- @fits1@ does 1 line lookahead.
+fits1 _ _ w x        | w < 0         = False
+fits1 _ _ w SFail                    = False
+fits1 _ _ w SEmpty                   = True
+fits1 p m w (SChar c x)              = fits1 p m (w - 1) x
+fits1 p m w (SText l s x)            = fits1 p m (w - l) x
+fits1 _ _ w (SLine i x)              = True
 
-fits :: Int -> SimpleDoc e -> Bool
-fits w _ | w < 0     = False
-fits _ SEmpty        = True
-fits w (SChar _ x)   = fits (w - 1) x
-fits w (SText l _ x) = fits (w - l) x
-fits _ (SLine _ _)   = True
-fits w (SEffect _ x) = fits w x
+-- @fitsR@ has a little more lookahead: assuming that nesting roughly
+-- corresponds to syntactic depth, @fitsR@ checks that not only the current line
+-- fits, but the entire syntactic structure being formatted at this level of
+-- indentation fits. If we were to remove the second case for @SLine@, we would
+-- check that not only the current structure fits, but also the rest of the
+-- document, which would be slightly more intelligent but would have exponential
+-- runtime (and is prohibitively expensive in practice).
+-- p = pagewidth
+-- m = minimum nesting level to fit in
+-- w = the width in which to fit the first line
+fitsR p m w x        | w < 0         = False
+fitsR p m w SFail                    = False
+fitsR p m w SEmpty                   = True
+fitsR p m w (SChar c x)              = fitsR p m (w - 1) x
+fitsR p m w (SText l s x)            = fitsR p m (w - l) x
+fitsR p m w (SLine i x) | m < i      = fitsR p m (p - i) x
+                        | otherwise  = True
 
 
 -----------------------------------------------------------
@@ -992,11 +1063,12 @@ renderCompact x
     where
       scan _ []     = SEmpty
       scan k (d:ds) = case d of
+                        Fail        -> SFail
                         Empty       -> scan k ds
                         Char c      -> let k' = k+1 in seq k' (SChar c (scan k' ds))
                         Text l s    -> let k' = k+l in seq k' (SText l s (scan k' ds))
                         Effect e    -> SEffect e (scan k ds)
-                        Line _      -> SLine 0 (scan 0 ds)
+                        Line        -> SLine 0 (scan 0 ds)
                         Cat y z     -> scan k (y:z:ds)
                         Nest _ y    -> scan k (y:ds)
                         Union _ y   -> scan k (y:ds)
@@ -1017,6 +1089,8 @@ renderCompact x
 -- > showWidth :: Int -> Doc -> String
 -- > showWidth w x   = displayS (renderPretty 0.4 w x) ""
 displayS :: SimpleDoc e -> ShowS
+displayS SFail              = error $ "@SFail@ can not appear uncaught in a " ++
+                                      "rendered @SimpleDoc@"
 displayS SEmpty             = id
 displayS (SChar c x)        = showChar c . displayS x
 displayS (SText _ s x)      = showString s . displayS x
@@ -1029,6 +1103,8 @@ displayS (SEffect _ t)      = displayS t
 -- > hPutDoc handle doc  = displayIO handle (renderPretty 0.4 100 doc)
 displayIO :: Handle -> SimpleDoc e -> IO ()
 displayIO handle = go where
+  go SFail         = error $ "@SFail@ can not appear uncaught in a " ++
+                             "rendered @SimpleDoc@"
   go SEmpty        = return ()
   go (SChar c x)   = hPutChar handle c >> go x
   go (SText _ s x) = hPutStr handle s >> go x
