@@ -915,7 +915,7 @@ flatAlt :: Doc e -> Doc e -> Doc e
 flatAlt = FlatAlt
 
 flatten :: Doc e -> Doc e
-flatten (FlatAlt x y)   = y
+flatten (FlatAlt _ y)   = y
 flatten (Cat x y)       = Cat (flatten x) (flatten y)
 flatten (Nest i x)      = Nest i (flatten x)
 flatten  Line           = Fail
@@ -951,12 +951,12 @@ renderPretty :: Float -> Int -> Doc e -> SimpleDoc e
 renderPretty = renderFits fits1
 
 -- | A slightly smarter rendering algorithm with more lookahead. It provides
--- provide earlier breaking on deeply nested structures
+-- provide earlier breaking on deeply nested structures.
 -- For example, consider this python-ish pseudocode:
 -- @fun(fun(fun(fun(fun([abcdefg, abcdefg])))))@
 -- If we put a softbreak (+ nesting 2) after each open parenthesis, and align
 -- the elements of the list to match the opening brackets, this will render with
--- @renderPretty@ and a page width of 20 as:
+-- @renderPretty@ and a page width of 20c as:
 -- @
 -- fun(fun(fun(fun(fun([
 --                     | abcdef,
@@ -964,12 +964,11 @@ renderPretty = renderFits fits1
 --                     ]
 --   )))))             |
 -- @
--- Where the 20c. boundary has been marked with |.
--- Because @renderPretty@ only uses one-line lookahead, it sees that the first
--- line fits, and is stuck putting the second and third lines after the 20-c
--- mark. In contrast, @renderSmart@ will continue to check that the potential
--- document up to the end of the indentation level. Thus, it will format the
--- document as:
+-- Where the 20c. boundary has been marked with |. Because @renderPretty@ only
+-- uses one-line lookahead, it sees that the first line fits, and is stuck
+-- putting the second and third lines after the 20c mark. In contrast,
+-- @renderSmart@ will continue to check the potential document up to the end of
+-- the indentation level. Thus, it will format the document as:
 --
 -- @
 -- fun(                |
@@ -982,10 +981,12 @@ renderPretty = renderFits fits1
 --             ]       |
 --   )))))             |
 -- @
--- Which fits within the 20c. boundary.
+-- Which fits within the 20c. mark.
 renderSmart :: Float -> Int -> Doc e -> SimpleDoc e
 renderSmart = renderFits fitsR
 
+renderFits :: (Int -> Int -> Int -> SimpleDoc e -> Bool)
+              -> Float -> Int -> Doc e -> SimpleDoc e
 renderFits fits rfrac w x
     = best 0 0 (Cons 0 x Nil)
     where
@@ -1003,7 +1004,7 @@ renderFits fits rfrac w x
             Char c      -> let k' = k+1 in seq k' (SChar c (best n k' ds))
             Text l s    -> let k' = k+l in seq k' (SText l s (best n k' ds))
             Line        -> SLine i (best i i ds)
-            FlatAlt x _ -> best n k (Cons i x ds)
+            FlatAlt l _ -> best n k (Cons i l ds)
             Cat x' y     -> best n k (Cons i x' (Cons i y ds))
             Nest j x'    -> let i' = i+j in seq i' (best n k (Cons i' x' ds))
             Effect e    -> SEffect e (best n k ds)
@@ -1024,12 +1025,13 @@ renderFits fits rfrac w x
                           wid = min (w - k) (r - k + n)
 
 -- @fits1@ does 1 line lookahead.
-fits1 _ _ w x        | w < 0         = False
-fits1 _ _ w SFail                    = False
-fits1 _ _ w SEmpty                   = True
-fits1 p m w (SChar c x)              = fits1 p m (w - 1) x
-fits1 p m w (SText l s x)            = fits1 p m (w - l) x
-fits1 _ _ w (SLine i x)              = True
+fits1 :: Int -> Int -> Int -> SimpleDoc e -> Bool
+fits1 _ _ w _        | w < 0         = False
+fits1 _ _ _ SFail                    = False
+fits1 _ _ _ SEmpty                   = True
+fits1 p m w (SChar _ x)              = fits1 p m (w - 1) x
+fits1 p m w (SText l _ x)            = fits1 p m (w - l) x
+fits1 _ _ _ (SLine _ _)              = True
 
 -- @fitsR@ has a little more lookahead: assuming that nesting roughly
 -- corresponds to syntactic depth, @fitsR@ checks that not only the current line
@@ -1041,12 +1043,13 @@ fits1 _ _ w (SLine i x)              = True
 -- p = pagewidth
 -- m = minimum nesting level to fit in
 -- w = the width in which to fit the first line
-fitsR p m w x        | w < 0         = False
-fitsR p m w SFail                    = False
-fitsR p m w SEmpty                   = True
-fitsR p m w (SChar c x)              = fitsR p m (w - 1) x
-fitsR p m w (SText l s x)            = fitsR p m (w - l) x
-fitsR p m w (SLine i x) | m < i      = fitsR p m (p - i) x
+fitsR :: Int -> Int -> Int -> SimpleDoc e -> Bool
+fitsR _ _ w _        | w < 0         = False
+fitsR _ _ _ SFail                    = False
+fitsR _ _ _ SEmpty                   = True
+fitsR p m w (SChar _ x)              = fitsR p m (w - 1) x
+fitsR p m w (SText l _ x)            = fitsR p m (w - l) x
+fitsR p m _ (SLine i x) | m < i      = fitsR p m (p - i) x
                         | otherwise  = True
 
 
