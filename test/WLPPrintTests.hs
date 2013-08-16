@@ -38,9 +38,8 @@ assertSmart w desc str doc = assertEqual (desc ++ " (smart)") str
                                 $ displayS (renderSmart 1.0 w doc) ""
 
 assertRender :: Int -> String -> String -> Doc e -> Assertion
-assertRender w desc str doc =
-  do assertPretty w desc str doc
-     assertSmart w desc str doc
+assertRender w desc str doc = do assertPretty w desc str doc
+                                 assertSmart w desc str doc
 
 emptyTests :: Assertion
 emptyTests = assertRender 80 "Empty test 1" "" empty
@@ -91,20 +90,20 @@ nestingTests = do assertRender 80 "Nesting test 1" "foo 2"
 
 codeTests :: [Test]
 codeTests = [
-    testCase "@list tests"   listTests
-  , testCase "@tupled tests" tupledTests
+    testCase "@list@ tests"   listTests
+  , testCase "@tupled@ tests" tupledTests
   ]
 
 listTests :: Assertion
-listTests = do assertRender 80 "@list test 1" "[1, 2, 3]"
+listTests = do assertRender 80 "@list@ test 1" "[1, 2, 3]"
                  $ pretty ([1, 2, 3] :: [Int])
-               assertRender 5 "@list test 2" "[ 1\n, 2\n, 3 ]"
+               assertRender 5 "@list@ test 2" "[ 1\n, 2\n, 3 ]"
                  $ pretty ([1, 2, 3] :: [Int])
 
 tupledTests :: Assertion
-tupledTests = do assertRender 80 "@tupled test 1" "(1, True, a)"
+tupledTests = do assertRender 80 "@tupled@ test 1" "(1, True, a)"
                    $ pretty (1 :: Int, True, 'a')
-                 assertRender 5 "@tupled test 2" "( 1\n, True\n, a )"
+                 assertRender 5 "@tupled@ test 2" "( 1\n, True\n, a )"
                    $ pretty (1 :: Int, True, 'a')
 
 ------------------------------------------------------------
@@ -112,25 +111,29 @@ tupledTests = do assertRender 80 "@tupled test 1" "(1, True, a)"
 
 formatTests :: [Test]
 formatTests = [
-    testCase "@renderPretty test" renderPrettyTest
-  , testCase "@renderSmart test"  renderSmartTest
+    testCase "@renderPretty@ test" renderPrettyTest
+  , testCase "@renderSmart@ test"  renderSmartTest
   ]
 
 deep :: Int -> Doc e
 deep 0 = pretty ["abc", "abcdef", "abcdef"]
 deep i = text "fun(" <> nest 2 (softbreak <> align (deep (i - 1)))
 
+-- @renderPretty@ has only one line of lookahead, so it can not fit the
+-- entire document within the pagewidth (20c), only the first line.
 renderPrettyTest :: Assertion
-renderPrettyTest = do assertPretty 20 "@renderPretty test 1" (concat [
-                         "fun(fun(fun(fun(fun(\n"
+renderPrettyTest = do assertPretty 20 "@renderPretty@ test 1" (concat [
+                          "fun(fun(fun(fun(fun(\n"
                         , "                  [ abc\n"
                         , "                  , abcdef\n"
                         , "                  , abcdef ]" ])
                         $ deep 5
 
+-- @renderSmart@ has more sophisiticated lookahead, so it fits the entire
+-- structure within the pagewidth (20c).
 renderSmartTest :: Assertion
-renderSmartTest = do assertSmart 20 "@renderPretty test 1" (concat [
-                          "fun(\n"
+renderSmartTest = do assertSmart 20 "@renderPretty@ test 1" (concat [
+                         "fun(\n"
                        , "  fun(\n"
                        , "    fun(\n"
                        , "      fun(\n"
