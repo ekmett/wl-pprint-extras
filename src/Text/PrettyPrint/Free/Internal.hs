@@ -10,7 +10,7 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Pretty print module based on Daan Leijen's implementation of Philip Wadler's 
+-- Pretty print module based on Daan Leijen's implementation of Philip Wadler's
 -- \"prettier printer\"
 --
 -- @
@@ -50,7 +50,7 @@
 -- 'renderCompact' for compact output. The pretty printing algorithm
 -- also uses a ribbon-width now for even prettier output.
 --
--- * There are two display routines, 'displayS' for strings and 'displayIO' 
+-- * There are two display routines, 'displayS' for strings and 'displayIO'
 -- for file based output.
 --
 -- * There is a 'Pretty' class.
@@ -60,8 +60,8 @@
 --
 -- * A type argument has been added and embedded 'effects' can be seen in
 -- the SimpleDoc type.
--- 
--- 
+--
+--
 
 -----------------------------------------------------------
 module Text.PrettyPrint.Free.Internal (
@@ -159,7 +159,7 @@ list = encloseSep lbracket rbracket comma
 -- encloses them in parenthesis. The documents are rendered
 -- horizontally if that fits the page. Otherwise they are aligned
 -- vertically. All comma separators are put in front of the elements.
-tupled :: Foldable f => f (Doc e) -> Doc e 
+tupled :: Foldable f => f (Doc e) -> Doc e
 tupled = encloseSep lparen rparen comma
 
 (<+>) :: Doc e -> Doc e -> Doc e
@@ -185,22 +185,26 @@ semiBraces = encloseSep lbrace rbrace semi
 -- Which is layed out with a page width of 20 as:
 --
 -- @
--- list [10,200,3000]
+-- list [10, 200, 3000]
 -- @
 --
 -- But when the page width is 15, it is layed out as:
 --
 -- @
--- list [10
---      ,200
---      ,3000]
+-- list [ 10
+--      , 200
+--      , 3000 ]
 -- @
 encloseSep :: Foldable f => Doc e -> Doc e -> Doc e -> f (Doc e) -> Doc e
 encloseSep left right sp ds0
     = case toList ds0 of
         []  -> left <> right
         [d] -> left <> d <> right
-        ds  -> align (cat (zipWith (<>) (left : repeat sp) ds) <> right) 
+        ds  -> group $ align $ left'
+                 <> (vcat (zipWith (<>) (empty : repeat (sp <> space)) ds))
+                 <> right'
+          where left'  = left <> flatAlt space empty
+                right' = flatAlt space empty <> right
 
 
 -----------------------------------------------------------
@@ -322,7 +326,7 @@ vcat :: Foldable f => f (Doc e) -> Doc e
 vcat = fold aboveBreak
 
 fold :: Foldable f => (Doc e -> Doc e -> Doc e) -> f (Doc e) -> Doc e
-fold f xs = case toList xs of 
+fold f xs = case toList xs of
   [] -> empty
   _  -> foldr1 f xs
 
@@ -465,7 +469,7 @@ comma = char ','
 -- | The document @space@ contains a single space, \" \".
 --
 -- > x <+> y   = x <> space <> y
-space :: Doc e 
+space :: Doc e
 space = char ' '
 
 -- | The document @dot@ contains a single dot, \".\".
@@ -605,7 +609,7 @@ instance Pretty a => Pretty (Maybe a) where
 --
 -- @
 -- let empty  :: Doc e
---     nest   :: Int -> Doc e -> Doc e 
+--     nest   :: Int -> Doc e -> Doc e
 --     linebreak
 --            :: Doc e
 -- @
@@ -639,7 +643,7 @@ fillBreak f x   = width x $ \w ->
 -- @
 fill :: Int -> Doc e -> Doc e
 fill f d = width d $ \w ->
-                     if (w >= f) 
+                     if (w >= f)
                      then empty
                      else text (spaces (f - w))
 
@@ -707,7 +711,7 @@ hang i d = align (nest i d)
 --    world
 -- @
 align :: Doc e -> Doc e
-align d = column $ \k -> 
+align d = column $ \k ->
          nesting $ \i -> nest (k - i) d   --nesting might be negative :-)
 
 -----------------------------------------------------------
@@ -798,9 +802,9 @@ instance Alternative Doc where
   empty = Empty
 
 instance MonadPlus Doc where
-  mplus = (<>) 
+  mplus = (<>)
   mzero = empty
-  
+
 -- | The data type @SimpleDoc@ represents rendered documents and is
 -- used by the display functions.
 --
