@@ -70,7 +70,7 @@ module Text.PrettyPrint.Free.Internal (
 
   -- * Basic combinators
   , char, text, nest, line, linebreak, group, softline
-  , softbreak, hardline, flatAlt
+  , softbreak, hardline, flatAlt, flatten
 
   -- * Alignment
   --

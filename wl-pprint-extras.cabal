@@ -1,7 +1,7 @@
 name:          wl-pprint-extras
 category:      Control, Monads, Text
 version:       3.4
-cabal-version: >= 1.6
+cabal-version: >= 1.8
 license:       BSD3
 license-file:  LICENSE
 author:        Edward A. Kmett
@@ -37,3 +37,17 @@ library
 
   ghc-options:      -Wall
   hs-source-dirs:   src
+
+test-suite wl-pprint-tests
+
+  build-depends:
+    base          == 4.*,
+    wl-pprint-extras,
+    HUnit,
+    test-framework,
+    test-framework-hunit
+
+  main-is: WLPPrintTests.hs
+  type: exitcode-stdio-1.0
+  ghc-options:      -Wall
+  hs-source-dirs:   test

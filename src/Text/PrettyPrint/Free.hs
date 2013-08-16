@@ -10,7 +10,7 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Pretty print module based on Daan Leijen's implementation of Philip Wadler's 
+-- Pretty print module based on Daan Leijen's implementation of Philip Wadler's
 -- \"prettier printer\"
 --
 -- @
@@ -60,8 +60,8 @@
 --
 -- * A type argument has been added and embedded 'effects' can be seen in
 -- the SimpleDoc type.
--- 
--- 
+--
+--
 
 -----------------------------------------------------------
 module Text.PrettyPrint.Free (
@@ -70,7 +70,7 @@ module Text.PrettyPrint.Free (
 
   -- * Basic combinators
   , char, text, nest, line, linebreak, group, softline
-  , softbreak
+  , softbreak, hardline, flatAlt, flatten
 
   -- * Alignment
   --
@@ -106,7 +106,7 @@ module Text.PrettyPrint.Free (
   , Pretty(..)
 
   -- * Rendering
-  , SimpleDoc(..), renderPretty, renderCompact
+  , SimpleDoc(..), renderPretty, renderCompact, renderSmart
   , displayS, displayIO
 
   -- * Undocumented
