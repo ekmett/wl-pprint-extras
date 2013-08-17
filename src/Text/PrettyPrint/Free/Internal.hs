@@ -948,7 +948,7 @@ data Docs e = Nil
 -- @ribbonfrac@ should be between @0.0@ and @1.0@. If it is lower or
 -- higher, the ribbon width will be 0 or @width@ respectively.
 renderPretty :: Float -> Int -> Doc e -> SimpleDoc e
-renderPretty = renderFits fits1
+renderPretty = renderFits nicest1
 
 -- | A slightly smarter rendering algorithm with more lookahead. It provides
 -- provide earlier breaking on deeply nested structures.
@@ -982,12 +982,28 @@ renderPretty = renderFits fits1
 --   )))))             |
 -- @
 -- Which fits within the 20c. mark.
-renderSmart :: Float -> Int -> Doc e -> SimpleDoc e
-renderSmart = renderFits fitsR
+-- In addition, @renderSmart@ uses this lookahead to minimize the number of
+-- lines printed, leading to more compact and visually appealing output.
+-- Consider this example using the same syntax as above:
+-- @aaaaaaaaaaa([abc, def, ghi])@
+-- When rendered with @renderPretty@ and a page width of 20c, we get:
+-- @
+-- aaaaaaaaaaa([ abc
+--             , def
+--             , ghi ])
+-- @
+-- Whereas when rendered with @renderSmart@ and a page width of 20c, we get:
+-- @
+-- aaaaaaaaaaa(
+--   [abc, def, ghi])
+-- @
+renderSmart :: Int -> Doc e -> SimpleDoc e
+renderSmart = renderFits nicestR 1.0
 
-renderFits :: (Int -> Int -> Int -> SimpleDoc e -> Bool)
+renderFits :: (Int -> Int -> Int -> Int -> SimpleDoc e -> SimpleDoc e
+               -> SimpleDoc e)
               -> Float -> Int -> Doc e -> SimpleDoc e
-renderFits fits rfrac w x
+renderFits nicest rfrac w x
     = best 0 0 (Cons 0 x Nil)
     where
       -- r :: the ribbon width in characters
@@ -1005,52 +1021,55 @@ renderFits fits rfrac w x
             Text l s    -> let k' = k+l in seq k' (SText l s (best n k' ds))
             Line        -> SLine i (best i i ds)
             FlatAlt l _ -> best n k (Cons i l ds)
-            Cat x' y     -> best n k (Cons i x' (Cons i y ds))
-            Nest j x'    -> let i' = i+j in seq i' (best n k (Cons i' x' ds))
+            Cat x' y    -> best n k (Cons i x' (Cons i y ds))
+            Nest j x'   -> let i' = i+j in seq i' (best n k (Cons i' x' ds))
             Effect e    -> SEffect e (best n k ds)
-            Union x' y   -> nicest n k (best n k (Cons i x' ds))
-                                       (best n k (Cons i y ds))
+            Union p q  -> nicest n k w r (best n k (Cons i p ds))
+                                         (best n k (Cons i q ds))
             Column f    -> best n k (Cons i (f k) ds)
             Nesting f   -> best n k (Cons i (f i) ds)
             Columns f   -> best n k (Cons i (f w) ds)
             Ribbon f    -> best n k (Cons i (f r) ds)
 
-      --nicest :: r = ribbon width, w = page width,
-      --          n = indentation of current line, k = current column
-      --          x and y, the (simple) documents to chose from.
-      --          precondition: first line of x are longer than the first line of y.
-      nicest n k x' y | fits w (min n k) wid x' = x'
-                      | otherwise  = y
-                        where
-                          wid = min (w - k) (r - k + n)
+-- @nicest1@ compares the first lines of the two documents.
+-- n = nesting, k = column, p = pagewidth
+nicest1 :: Int -> Int -> Int -> Int -> SimpleDoc e -> SimpleDoc e -> SimpleDoc e
+nicest1 n k p r x' y | fits (min n k) wid x' = x'
+                     | otherwise = y
+  where wid = min (p - k) (r - k + n)
+        fits _ w _        | w < 0 = False
+        fits _ _ SFail            = False
+        fits _ _ SEmpty           = True
+        fits m w (SChar _ x)      = fits m (w - 1) x
+        fits m w (SText l _ x)    = fits m (w - l) x
+        fits _ _ (SLine _ _)      = True
 
--- @fits1@ does 1 line lookahead.
-fits1 :: Int -> Int -> Int -> SimpleDoc e -> Bool
-fits1 _ _ w _        | w < 0         = False
-fits1 _ _ _ SFail                    = False
-fits1 _ _ _ SEmpty                   = True
-fits1 p m w (SChar _ x)              = fits1 p m (w - 1) x
-fits1 p m w (SText l _ x)            = fits1 p m (w - l) x
-fits1 _ _ _ (SLine _ _)              = True
-
--- @fitsR@ has a little more lookahead: assuming that nesting roughly
--- corresponds to syntactic depth, @fitsR@ checks that not only the current line
--- fits, but the entire syntactic structure being formatted at this level of
--- indentation fits. If we were to remove the second case for @SLine@, we would
--- check that not only the current structure fits, but also the rest of the
--- document, which would be slightly more intelligent but would have exponential
--- runtime (and is prohibitively expensive in practice).
--- p = pagewidth
--- m = minimum nesting level to fit in
--- w = the width in which to fit the first line
-fitsR :: Int -> Int -> Int -> SimpleDoc e -> Bool
-fitsR _ _ w _        | w < 0         = False
-fitsR _ _ _ SFail                    = False
-fitsR _ _ _ SEmpty                   = True
-fitsR p m w (SChar _ x)              = fitsR p m (w - 1) x
-fitsR p m w (SText l _ x)            = fitsR p m (w - l) x
-fitsR p m _ (SLine i x) | m < i      = fitsR p m (p - i) x
-                        | otherwise  = True
+-- @nicestR@ compares the initial lines of the two documents that are nested at
+-- least as deep as the current nesting level. If the initial lines of both
+-- documents fit within the page width, the document that takes fewer lines is
+-- prefered, with preference toward the first.
+nicestR :: Int -> Int -> Int -> Int -> SimpleDoc e -> SimpleDoc e -> SimpleDoc e
+nicestR n k p r x' y =
+  if fits (min n k) wid x' <= fits (min n k) wid y then x' else y
+  where wid = min (p - k) (r - k + n)
+        inf = 1.0/0 :: Double
+        -- @fitsR@ has a little more lookahead: assuming that nesting roughly
+        -- corresponds to syntactic depth, @fitsR@ checks that not only the
+        -- current line fits, but the entire syntactic structure being formatted
+        -- at this level of indentation fits. If we were to remove the second
+        -- case for @SLine@, we would check that not only the current structure
+        -- fits, but also the rest of the document, which would be slightly more
+        -- intelligent but would have exponential runtime (and is prohibitively
+        -- expensive in practice).
+        -- m = minimum nesting level to fit in
+        -- w = the width in which to fit the first line
+        fits _ w _           | w < 0     = inf
+        fits _ _ SFail                   = inf
+        fits _ _ SEmpty                  = 0
+        fits m w (SChar _ x)             = fits m (w - 1) x
+        fits m w (SText l _ x)           = fits m (w - l) x
+        fits m _ (SLine i x) | m < i     = 1 + fits m (p - i) x
+                             | otherwise = 0
 
 
 -----------------------------------------------------------

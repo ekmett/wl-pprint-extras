@@ -3,7 +3,7 @@ module Main where
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.HUnit hiding (Test)
-import Text.PrettyPrint.Free
+import Text.PrettyPrint.Free.Internal
 
 main :: IO ()
 main = defaultMain [
@@ -24,6 +24,8 @@ conTests = [
   , testCase "Union tests"   unionTests
   , testCase "Column tests"  columnTests
   , testCase "Nesting tests" nestingTests
+  , testCase "Columns tests" columnsTests
+  , testCase "Ribbon tests"  ribbonTests
   ]
 
 ------------------------------------------------------------
@@ -35,7 +37,7 @@ assertPretty w desc str doc = assertEqual (desc ++ " (pretty)") str
 
 assertSmart :: Int -> String -> String -> Doc e -> Assertion
 assertSmart w desc str doc = assertEqual (desc ++ " (smart)") str
-                                $ displayS (renderSmart 1.0 w doc) ""
+                                $ displayS (renderSmart w doc) ""
 
 assertRender :: Int -> String -> String -> Doc e -> Assertion
 assertRender w desc str doc = do assertPretty w desc str doc
@@ -83,7 +85,13 @@ nestingTests :: Assertion
 nestingTests = do assertRender 80 "Nesting test 1" "foo 2"
                     $ text "foo" <+> (nest 2 $ nesting $ \n -> pretty n)
 
--- TODO(sjindel): Add tests for columns and ribbon.
+columnsTests :: Assertion
+columnsTests = do assertRender 21 "Columns test 1" "foo 21"
+                    $ text "foo" <+> (nest 2 $ columns $ \w -> pretty w)
+
+ribbonTests :: Assertion
+ribbonTests = do assertEqual "Ribbon test 1" "foo 32"
+                   $ show (text "foo" <+> (ribbon $ \r -> pretty r))
 
 ------------------------------------------------------------
 -- We test some combinators.
@@ -107,7 +115,8 @@ tupledTests = do assertRender 80 "@tupled@ test 1" "(1, True, a)"
                    $ pretty (1 :: Int, True, 'a')
 
 ------------------------------------------------------------
--- We test some corner cases of the formatting algorithms.
+-- We test some corner cases of the formatting algorithms on a prototypical
+-- syntax for a scripting language (e.g. Python).
 
 formatTests :: [Test]
 formatTests = [
@@ -115,9 +124,30 @@ formatTests = [
   , testCase "@renderSmart@ test"  renderSmartTest
   ]
 
-deep :: Int -> Doc e
-deep 0 = pretty ["abc", "abcdef", "abcdef"]
-deep i = text "fun(" <> nest 2 (softbreak <> align (deep (i - 1)))
+data Syn = Call String [Syn]    -- name(syn, ..., syn)
+         | Plus Syn Syn  -- syn + syn
+         | List [Syn]    -- [syn, ..., syn]
+         | Name String
+
+instance Pretty Syn where
+  pretty (Call n s) =
+    text (n ++ "(") <> nest 2 (softbreak <> align body) <//> rparen
+    where body = hcat $ punctuate (comma <> softline) (map pretty s)
+  pretty (Plus s t) = nest 2 (pretty s) </> text "+" </> nest 2 (pretty t)
+  pretty (List l) = list (map pretty l)
+  pretty (Name n) = text n
+
+deep :: Int -> Syn
+deep 0 = List (map Name ["abc", "abcdef", "abcdef"])
+deep i = Call "fun" [deep (i - 1)]
+
+branch :: Int -> Syn
+branch 0 = List (map Name ["abc", "abc"])
+branch i | i < 3 = Call "fun" [branch (i - 1), branch (i - 1)]
+         | otherwise = Call "fun" [branch (i - 1)]
+
+wide :: Syn
+wide = Call "aaaaaaaaaaa" [List $ map Name ["abc", "def", "ghi"]]
 
 -- @renderPretty@ has only one line of lookahead, so it can not fit the
 -- entire document within the pagewidth (20c), only the first line.
@@ -126,13 +156,31 @@ renderPrettyTest = do assertPretty 20 "@renderPretty@ test 1" (concat [
                           "fun(fun(fun(fun(fun(\n"
                         , "                  [ abc\n"
                         , "                  , abcdef\n"
-                        , "                  , abcdef ]" ])
-                        $ deep 5
+                        , "                  , abcdef ]\n"
+                        , "                ))))\n"
+                        , ")" ])
+                        $ pretty (deep 5)
+                      assertPretty 20 "@renderPretty@ test 2" (concat [
+                          "fun(fun(fun([ abc\n"
+                        , "            , abc ],\n"
+                        , "            [ abc\n"
+                        , "            , abc ]\n"
+                        , "        ), fun([ abc\n"
+                        , "               , abc ],\n"
+                        , "               [ abc\n"
+                        , "               , abc ]\n"
+                        , "        )))" ])
+                        $ pretty (branch 3)
+                      assertPretty 20 "@renderPretty@ test 3" (concat [
+                          "aaaaaaaaaaa([ abc\n"
+                        , "            , def\n"
+                        , "            , ghi ])" ])
+                        $ pretty wide
 
 -- @renderSmart@ has more sophisiticated lookahead, so it fits the entire
 -- structure within the pagewidth (20c).
 renderSmartTest :: Assertion
-renderSmartTest = do assertSmart 20 "@renderPretty@ test 1" (concat [
+renderSmartTest = do assertSmart 20 "@renderSmart@ test 1" (concat [
                          "fun(\n"
                        , "  fun(\n"
                        , "    fun(\n"
@@ -140,5 +188,26 @@ renderSmartTest = do assertSmart 20 "@renderPretty@ test 1" (concat [
                        , "        fun(\n"
                        , "          [ abc\n"
                        , "          , abcdef\n"
-                       , "          , abcdef ]" ])
-                       $ deep 5
+                       , "          , abcdef ]\n"
+                       , "        )))))" ])
+                       $ pretty (deep 5)
+                     assertSmart 20 "@renderSmart@ test 2" (concat [
+                         "fun(\n"
+                       , "  fun(\n"
+                       , "    fun(\n"
+                       , "      fun(\n"
+                       , "        fun([ abc\n"
+                       , "            , abc ],\n"
+                       , "            [ abc\n"
+                       , "            , abc ]\n"
+                       , "        ),\n"
+                       , "        fun([ abc\n"
+                       , "            , abc ],\n"
+                       , "            [ abc\n"
+                       , "            , abc ])\n"
+                       , "      ))))" ])
+                       $ pretty (branch 5)
+                     assertSmart 20 "@renderSmart@ test 3" (concat [
+                         "aaaaaaaaaaa(\n"
+                       , "  [abc, def, ghi])" ])
+                       $ pretty wide
