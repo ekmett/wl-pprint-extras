@@ -10,6 +10,7 @@ main = defaultMain [
          testGroup "Tests for each data constructor" conTests
        , testGroup "Tests for some combinators" codeTests
        , testGroup "Tests for the formatting algorithms" formatTests
+       , testGroup "Tests for the code examples in the documentation" docTests
        ]
 
 conTests :: [Test]
@@ -142,3 +143,53 @@ renderSmartTest = do assertSmart 20 "@renderPretty@ test 1" (concat [
                        , "          , abcdef\n"
                        , "          , abcdef ]" ])
                        $ deep 5
+
+------------------------------------------------------------
+-- We test the code examples in the haddock comments.
+
+docTests :: [Test]
+docTests = [
+    testCase "@fill@ test" fillTest
+  , testCase "@fillBreak@ test" fillBreakTest
+  , testCase "@hang@ test" hangTest
+  , testCase "@align@ test" alignTest
+  ]
+
+types :: [(String, String)]
+types = [ ("empty","Doc e")
+        , ("nest","Int -> Doc e -> Doc e")
+        , ("linebreak","Doc e") ]
+
+fillTest :: Assertion
+fillTest = do assertRender 80 "@fill@ test 1" (concat [
+                  "let empty  :: Doc e\n"
+                , "    nest   :: Int -> Doc e -> Doc e\n"
+                , "    linebreak :: Doc e" ])
+                $ text "let" <+> align (vcat (map ptype types))
+              where ptype (name, tp) =
+                      fill 6 (text name) <+> text "::" <+> text tp
+
+fillBreakTest :: Assertion
+fillBreakTest = do assertRender 80 "@fillBreak@ test 1" (concat [
+                       "let empty  :: Doc e\n"
+                     , "    nest   :: Int -> Doc e -> Doc e\n"
+                     , "    linebreak\n"
+                     , "           :: Doc e" ])
+                     $ text "let" <+> align (vcat (map ptype types))
+                where ptype (name, tp) =
+                        fillBreak 6 (text name) <+> (text "::" <+> text tp)
+
+hangTest :: Assertion
+hangTest = do assertRender 20 "@hang@ test 1" (concat [
+                  "the hang combinator\n"
+                , "    indents these\n"
+                , "    words !" ])
+                $ hang 4 $ fillSep $ map text
+                $ words "the hang combinator indents these words !"
+
+alignTest :: Assertion
+alignTest = do assertRender 20 "@align@ test 1" (concat [
+                   "hi nice\n"
+                 , "   world" ])
+                 $ text "hi" <+> (text "nice" $$ text "world")
+               where x $$ y = align $ x <> linebreak <> y
