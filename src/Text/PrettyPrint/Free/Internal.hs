@@ -2,8 +2,10 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Text.PrettyPrint.Free.Internal
--- Copyright   :  Edward Kmett (c) 2011,
---                Daan Leijen (c) 2000
+-- Copyright   :  Google, Inc. (c) 2013,
+--                Edward Kmett (c) 2011,
+--                Daan Leijen  (c) 2000
+--
 -- License     :  BSD-style (see the file LICENSE)
 --
 -- Maintainer  :  ekmett@gmail.com
