@@ -1,3 +1,8 @@
+3.5
+---
+* Merged a bunch of improvements by Samir Jindel
+* Added support for `text` 1.0
+
 3.4
 ---
 * Additional instances for Data.Text and Data.Text.Lazy
