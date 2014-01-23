@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Text.PrettyPrint.Free.Internal
@@ -751,10 +750,12 @@ data Doc e
   | Ribbon  (Int -> Doc e)
 
 instance Functor Doc where
+  fmap _ Fail = Fail
   fmap _ Empty = Empty
   fmap _ (Char c) = Char c
   fmap _  Line = Line
   fmap _ (Text i s) = Text i s
+  fmap f (FlatAlt l r) = FlatAlt (fmap f l) (fmap f r)
   fmap f (Cat l r) = Cat (fmap f l) (fmap f r)
   fmap f (Nest i d) = Nest i (fmap f d)
   fmap f (Union l r) = Union (fmap f l) (fmap f r)
@@ -776,10 +777,12 @@ instance Bind Doc where
 
 instance Monad Doc where
   return = Effect
+  Fail >>= _ = Fail
   Empty >>= _ = Empty
   Char c >>= _ = Char c
   Text i s >>= _ = Text i s
   Line >>= _ = Line
+  FlatAlt l r >>= k = FlatAlt (l >>= k) (r >>= k)
   Cat l r >>= k = Cat (l >>= k) (r >>= k)
   Nest i d >>= k = Nest i (d >>= k)
   Union l r >>= k = Union (l >>= k) (r >>= k)
@@ -824,6 +827,7 @@ data SimpleDoc e
   | SEffect e (SimpleDoc e)
 
 instance Functor SimpleDoc where
+  fmap _ SFail = SFail
   fmap _ SEmpty = SEmpty
   fmap f (SChar c d) = SChar c (fmap f d)
   fmap f (SText i s d) = SText i s (fmap f d)
@@ -831,6 +835,7 @@ instance Functor SimpleDoc where
   fmap f (SEffect e d) = SEffect (f e) (fmap f d)
 
 instance Foldable SimpleDoc where
+  foldMap _ SFail = mempty
   foldMap _ SEmpty = mempty
   foldMap f (SChar _ d) = foldMap f d
   foldMap f (SText _ _ d) = foldMap f d
@@ -838,6 +843,7 @@ instance Foldable SimpleDoc where
   foldMap f (SEffect e d) = f e `mappend` foldMap f d
 
 instance Traversable SimpleDoc where
+  traverse _ SFail = pure SFail
   traverse _ SEmpty = pure SEmpty
   traverse f (SChar c d) = SChar c <$> traverse f d
   traverse f (SText i s d) = SText i s <$> traverse f d
@@ -1045,6 +1051,7 @@ nicest1 n k p r x' y | fits (min n k) wid x' = x'
         fits m w (SChar _ x)      = fits m (w - 1) x
         fits m w (SText l _ x)    = fits m (w - l) x
         fits _ _ (SLine _ _)      = True
+        fits m w (SEffect _ x)    = fits m w x
 
 -- @nicestR@ compares the initial lines of the two documents that are nested at
 -- least as deep as the current nesting level. If the initial lines of both
@@ -1072,6 +1079,7 @@ nicestR n k p r x' y =
         fits m w (SText l _ x)           = fits m (w - l) x
         fits m _ (SLine i x) | m < i     = 1 + fits m (p - i) x
                              | otherwise = 0
+        fits m w (SEffect _ x)           = fits m w x
 
 
 -----------------------------------------------------------
@@ -1097,6 +1105,7 @@ renderCompact x
                         Text l s    -> let k' = k+l in seq k' (SText l s (scan k' ds))
                         Effect e    -> SEffect e (scan k ds)
                         Line        -> SLine 0 (scan 0 ds)
+                        FlatAlt y _ -> scan k (y:ds)
                         Cat y z     -> scan k (y:z:ds)
                         Nest _ y    -> scan k (y:ds)
                         Union _ y   -> scan k (y:ds)
