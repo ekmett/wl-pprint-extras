@@ -1,3 +1,7 @@
+3.5.0.3
+-------
+* nats version 1 support
+
 3.5
 ---
 * Merged a bunch of improvements by Samir Jindel
