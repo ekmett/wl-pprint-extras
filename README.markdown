@@ -1,7 +1,7 @@
 wl-pprint-extras
 ================
 
-[![Build Status](https://secure.travis-ci.org/ekmett/wl-pprint-extras.png)](http://travis-ci.org/ekmett/wl-pprint-extras)
+[![Hackage](https://img.shields.io/hackage/v/wl-pprint-extras.svg)](https://hackage.haskell.org/package/wl-pprint-extras) [![Build Status](https://secure.travis-ci.org/ekmett/wl-pprint-extras.png?branch=master)](http://travis-ci.org/ekmett/wl-pprint-extras
 
 This package provides a free monad based on the Leijen/Wadler pretty printer.
 
