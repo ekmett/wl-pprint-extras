@@ -32,15 +32,15 @@ conTests = [
 ------------------------------------------------------------
 -- We test the @Doc@ constructors.
 
-assertPretty :: Int -> String -> String -> Doc e -> Assertion
+assertPretty :: Int -> String -> String -> Doc a e -> Assertion
 assertPretty w desc str doc = assertEqual (desc ++ " (pretty)") str
                                 $ displayS (renderPretty 1.0 w doc) ""
 
-assertSmart :: Int -> String -> String -> Doc e -> Assertion
+assertSmart :: Int -> String -> String -> Doc a e -> Assertion
 assertSmart w desc str doc = assertEqual (desc ++ " (smart)") str
                                 $ displayS (renderSmart w doc) ""
 
-assertRender :: Int -> String -> String -> Doc e -> Assertion
+assertRender :: Int -> String -> String -> Doc a e -> Assertion
 assertRender w desc str doc = do assertPretty w desc str doc
                                  assertSmart w desc str doc
 
