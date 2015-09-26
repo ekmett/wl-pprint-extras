@@ -63,6 +63,8 @@
 -- the SimpleDoc type.
 --
 --
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 -----------------------------------------------------------
 module Text.PrettyPrint.Free.Internal (
@@ -345,6 +347,7 @@ instance Semigroup (Doc a e) where
 instance Monoid (Doc a e) where
   mappend = Cat
   mempty = empty
+  mconcat = hcat
 
 -- | The document @(x \<\/\> y)@ concatenates document @x@ and @y@ with a
 -- 'softline' in between. This effectively puts @x@ and @y@ either
@@ -593,6 +596,9 @@ instance (Pretty a,Pretty b,Pretty c) => Pretty (a,b,c) where
 instance Pretty a => Pretty (Maybe a) where
   pretty Nothing = empty
   pretty (Just x) = pretty x
+
+instance Pretty Rational where
+  pretty = text . show
 
 -----------------------------------------------------------
 -- semi primitive: fill and fillBreak
@@ -1072,7 +1078,7 @@ nicestR n k p r x' y =
   if fits (min n k) wid x' <= fits (min n k) wid y then x' else y
   where wid = min (p - k) (r - k + n)
         inf = 1.0/0 :: Double
-        -- @fitsR@ has a little more lookahead: assuming that nesting roughly
+        -- @fits@ has a little more lookahead: assuming that nesting roughly
         -- corresponds to syntactic depth, @fitsR@ checks that not only the
         -- current line fits, but the entire syntactic structure being formatted
         -- at this level of indentation fits. If we were to remove the second
@@ -1234,7 +1240,7 @@ putDoc doc = hPutDoc stdout doc
 -- >          ; hClose handle
 -- >          }
 hPutDoc :: Handle -> Doc a e -> IO ()
-hPutDoc handle doc = displayIO handle (renderPretty 0.4 80 doc)
+hPutDoc handle doc = displayIO handle (renderPretty 0.4 100 doc)
 
 -----------------------------------------------------------
 -- insert spaces
