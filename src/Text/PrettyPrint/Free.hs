@@ -73,6 +73,9 @@ module Text.PrettyPrint.Free (
   , char, text, nest, line, linebreak, group, softline
   , softbreak, hardline, flatAlt, flatten
 
+  -- * Annotations
+  , annotate, fmapAnn, sdocAE, sdocScanAnn
+
   -- * Alignment
   --
   -- The combinators in this section can not be described by Wadler's
@@ -108,7 +111,7 @@ module Text.PrettyPrint.Free (
 
   -- * Rendering
   , SimpleDoc(..), renderPretty, renderCompact, renderSmart
-  , displayS, displayIO
+  , displayS, displayIO, displayDecorated
 
   -- * Undocumented
 
