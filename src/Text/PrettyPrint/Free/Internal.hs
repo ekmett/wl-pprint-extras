@@ -76,7 +76,7 @@ module Text.PrettyPrint.Free.Internal (
   , softbreak, hardline, flatAlt, flatten
 
   -- * Annotations
-  , annotate, sdocAE, sdocScanAnn
+  , annotate, fmapAnn, sdocAE, sdocScanAnn
 
   -- * Alignment
   --
@@ -781,6 +781,9 @@ docLeafyRec ef an = go
 
 instance Functor (Doc a) where
   fmap f = docLeafyRec (Effect . f) Annotate
+
+fmapAnn :: (a -> a') -> Doc a e -> Doc a' e
+fmapAnn f = docLeafyRec Effect (Annotate . f)
 
 instance Apply (Doc a) where
   (<.>) = ap
