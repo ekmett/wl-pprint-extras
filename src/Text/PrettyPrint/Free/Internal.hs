@@ -76,7 +76,7 @@ module Text.PrettyPrint.Free.Internal (
   , softbreak, hardline, flatAlt, flatten
 
   -- * Annotations
-  , annotate, fmapAnn, sdocAE, sdocScanAnn
+  , annotate, sdocAE, sdocScanAnn
 
   -- * Alignment
   --
@@ -128,6 +128,7 @@ module Text.PrettyPrint.Free.Internal (
 import Data.String
 import Data.Foldable hiding (fold)
 import Data.Traversable
+import Data.Bifunctor
 import Data.Functor.Apply
 import Data.Functor.Bind
 import Data.Functor.Plus
@@ -782,8 +783,8 @@ docLeafyRec ef an = go
 instance Functor (Doc a) where
   fmap f = docLeafyRec (Effect . f) Annotate
 
-fmapAnn :: (a -> a') -> Doc a e -> Doc a' e
-fmapAnn f = docLeafyRec Effect (Annotate . f)
+instance Bifunctor Doc where
+  bimap f g = docLeafyRec (Effect . g) (Annotate . f)
 
 instance Apply (Doc a) where
   (<.>) = ap

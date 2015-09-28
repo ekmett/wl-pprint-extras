@@ -74,7 +74,7 @@ module Text.PrettyPrint.Free (
   , softbreak, hardline, flatAlt, flatten
 
   -- * Annotations
-  , annotate, fmapAnn, sdocAE, sdocScanAnn
+  , annotate, sdocAE, sdocScanAnn
 
   -- * Alignment
   --
