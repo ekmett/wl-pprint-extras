@@ -800,7 +800,7 @@ instance Bind (Doc a) where
   (>>-) = (>>=)
 
 instance Monad (Doc a) where
-  return = Effect
+  return = pure
   d >>= k = docLeafyRec (\e -> k e) Annotate d
   fail _ = empty
 
