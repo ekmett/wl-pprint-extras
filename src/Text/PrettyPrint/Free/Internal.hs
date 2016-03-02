@@ -72,7 +72,7 @@ module Text.PrettyPrint.Free.Internal (
     Doc(..), putDoc, hPutDoc
 
   -- * Basic combinators
-  , char, text, nest, line, linebreak, group, softline
+  , char, text, string, nest, line, linebreak, group, softline
   , softbreak, hardline, flatAlt, flatten
 
   -- * Annotations
@@ -884,6 +884,13 @@ text :: String -> Doc a e
 text "" = Empty
 text s  = Text (length s) s
 
+-- | The document @(string s)@ concatenates all characters in @s@
+-- using @line@ for newline characters and @char@ for all other
+-- characters. It is used instead of 'text' whenever the text contains
+-- newline characters.
+string :: String -> Doc a e
+string = pretty
+
 -- | The @line@ document advances to the next line and indents to the
 -- current nesting level. Document @line@ behaves like @(text \" \")@
 -- if the line break is undone by 'group'.
@@ -1179,14 +1186,14 @@ displayDecorated :: (Applicative f, Monoid o)
                  -> (String -> f o)   -- ^ How to display a string (from document or whitespace)
                  -> SimpleDoc a e
                  -> f o
-displayDecorated start stop eff string = go
+displayDecorated start stop eff str = go
  where
   go SFail          = error $ "@SFail@ can not appear uncaught in a " ++
                               "rendered @SimpleDoc@"
   go SEmpty         = pure mempty
-  go (SChar c x)    = string (pure c) <++> go x
-  go (SText _ s x)  = string s <++> go x
-  go (SLine i x)    = string ('\n':indentation i) <++> go x
+  go (SChar c x)    = str (pure c) <++> go x
+  go (SText _ s x)  = str s <++> go x
+  go (SLine i x)    = str ('\n':indentation i) <++> go x
   go (SEffect e x)  = eff   e <++> go x
   go (SPushAnn a x) = start a <++> go x
   go (SPopAnn  a x) = stop  a <++> go x

@@ -70,7 +70,7 @@ module Text.PrettyPrint.Free (
     Doc, putDoc, hPutDoc
 
   -- * Basic combinators
-  , char, text, nest, line, linebreak, group, softline
+  , char, text, string, nest, line, linebreak, group, softline
   , softbreak, hardline, flatAlt, flatten
 
   -- * Annotations
