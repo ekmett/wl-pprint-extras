@@ -24,7 +24,7 @@ library
 
   build-depends:
     base          == 4.*,
-    containers    >= 0.4     && < 0.6,
+    containers    >= 0.4     && <= 0.6.0.1,
     nats          >= 0.1     && < 2,
     semigroups    >= 0.9     && < 1,
     semigroupoids >= 3       && < 6,
